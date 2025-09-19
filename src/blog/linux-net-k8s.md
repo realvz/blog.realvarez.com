@@ -5,6 +5,7 @@ layout: "post.njk"
 description: "This document provides an overview of the components that enable network communication between pods, nodes, and the external world."
 ---
 
+
 # Linux Networking for Kubernetes Users
 
 *Last updated: [[2025-09-18]]*
@@ -19,7 +20,7 @@ When a new Pod comes to life, the CNI first gives it its own isolated network n
 
 > A *network namespace* is a feature in Linux that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other. [^2]
 
-![[IMG_2965.jpeg|Figure: Linux Network Namespaces(https://wizardzines.com/comics/network-namespaces/)]]
+![Figure: Linux Network Namespaces(https://wizardzines.com/comics/network-namespaces/)](IMG_2965.jpeg)
 
 Each Pod (residing in its own network namespace) then receives a `veth` pair. A *`veth`* pair consists of two interconnected virtual network interfaces. Whatever goes into one end comes out the other, and vice-versa. 
 
@@ -28,13 +29,13 @@ Here's how the `veth` pair bridges the pod with the worker node's network:
 2. `veth0-pod` into Pod Namespace -- One end of the `veth` pair (`veth0-pod`) is moved into the Pod's newly created network namespace (`ip link set veth0-pod netns <pod-namespace>`). Inside the Pod, this interface is typically renamed to a standard name like `eth0` (`ip link set veth0-pod name eth0`). This `eth0` is what the applications running in the Pod see and use to send and receive network traffic.
 3. `veth0-bridge` to the Bridge -- The other end of the `veth` pair (`veth0-bridge`) remains in the host's network namespace and is then attached to the CNI-created Linux bridge (e.g., `cni0`, `br0`, or `docker0`).
 
-![[Kubernetes Networking-1758132101915.webp|Figure: How pods communicate with other pods]]
+![Figure: How pods communicate with other pods](Kubernetes%20Networking-1758132101915.webp)
 
 ## Inter-Pod Communication
 
 When pod-A on a node wants to communicate with pod-B on the *same* node, traffic from pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of pod B, which then enters pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge itself is connected to the host's network stack. 
 
-![[Kubernetes-Networking-1758168916151.webp|Figure: Container network setup on a node]]
+![Figure: Container network setup on a node](Kubernetes%20Networking-1758168916151.webp)
 
 To connect pods with services, pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
 
@@ -89,7 +90,9 @@ $ ip neighbour
 169.254.1.1 dev eth0 lladdr 8e:62:30:ec:7f:37 PERMANENT
 ```
 
-![[Kubernetes Networking-1758212585275.webp|Figure: Pinging one pod from another]]
+
+
+![Figure: Pinging one pod from another](Kubernetes%20Networking-1758212585275.webp)
 
 ## Netfilter and Packet Routing in Kubernetes
 
@@ -116,8 +119,7 @@ We can model three kinds of traffic flows based on their destination:
 - Traffic passing through the node: This is traffic not destined for the node itself, such as pod-to-pod communication on different nodes. This traffic follows the path: `PREROUTING` → `FORWARD` → `POSTROUTING`.
 - Incoming traffic to the node -- This is traffic directed at the node itself, like a request to a service running on the host. This traffic follows the path: `PREROUTING` → `INPUT`.
 - Outgoing traffic from the node -- This is traffic originating from the node itself. This traffic follows the path: `OUTPUT` → `POSTROUTING`.[^4]
-
-![[Kubernetes Networking-1758135896763.webp|Figure: A simplified diagram of Netfilter hooks and packet flow]]
+![Figure: A simplified diagram of Netfilter hooks and packet flow](Kubernetes%20Networking-1758135896763.webp)
 
 Netfilter allows traffic originating from pods to be routed out of the node's primary network interface for external communication (with SNAT applied by `netfilter`, as we discussed). Similarly, incoming traffic destined for a Pod (e.g., via a Service's DNAT) arrives at the Node, is processed by `netfilter`, and then routed to the correct Pod via the bridge and its associated `veth` pair.
 
@@ -218,18 +220,18 @@ Cilium optimizes the data path for pod-to-pod communication. While the underlyi
 
 - [The Architecture of Iptables and Netfilter • CloudSigma](https://blog.cloudsigma.com/the-architecture-of-iptables-and-netfilter/#:~:text=It%20indicates%20the%20chains%20that,✓)
 - [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
-- https://more.suse.com/rs/937-DCH-261/images/DivingDeepIntoKubernetesNetworking_final.pdf
+- <https://more.suse.com/rs/937-DCH-261/images/DivingDeepIntoKubernetesNetworking_final.pdf>
 
 ---
 
-[^1]: https://github.com/aws/amazon-vpc-cni-k8s
-[^2]: https://cloudnativenow.com/topics/cloudnativenetworking/understanding-kubernetes-networking-architecture/
+[^1]: <https://github.com/aws/amazon-vpc-cni-k8s>
+[^2]: <https://cloudnativenow.com/topics/cloudnativenetworking/understanding-kubernetes-networking-architecture/>
 [^3]: [amazon-vpc-cni-k8s/docs/cni-proposal.md at master · aws/amazon-vpc-cni-k8s · GitHub](https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/cni-proposal.md#solution-components)
 [^4]: [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
 [^5]: [Faster firewalls with bpfilter LWN.net](https://lwn.net/Articles/1017705/?utm_source=chatgpt.com)
 [^6]: [Linux 2.4 Packet Filtering HOWTO: How Packets Traverse The Filters](https://www.netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-6.html)
 [^7]: [A Deep Dive into Iptables and Netfilter Architecture \| DigitalOcean](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
-[^8]: https://linux-audit.com/bpfilter-next-generation-linux-firewall/
+[^8]: <https://linux-audit.com/bpfilter-next-generation-linux-firewall/>
 [^9]: [BPF comes to firewalls LWN.net](https://lwn.net/Articles/747551/)
 [^10]: [Network Policy — Cilium 1.9.18 documentation](https://docs.cilium.io/en/v1.9/concepts/kubernetes/policy/)
 [^11]: [Routing — Cilium 1.18.2 documentation](https://docs.cilium.io/en/stable/network/concepts/routing/?utm_source=chatgpt.com)
