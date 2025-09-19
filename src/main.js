@@ -1,6 +1,22 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     init_mode();
+    convertAltTextToCaptions();
 });
+
+function convertAltTextToCaptions() {
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        if (img.alt && img.alt.trim() !== '') {
+            const figure = document.createElement('figure');
+            const figcaption = document.createElement('figcaption');
+            
+            figcaption.textContent = img.alt;
+            img.parentNode.insertBefore(figure, img);
+            figure.appendChild(img);
+            figure.appendChild(figcaption);
+        }
+    });
+}
 
 function updateGiscusTheme() {
     const theme = localStorage.theme === 'dark' ? 'dark' : 'light';

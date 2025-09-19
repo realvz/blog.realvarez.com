@@ -1,34 +1,13 @@
-# 11ty-Serene
+# Re's personal site
 
-A minimal theme for a landing page, featuring a simple structure.
+👋 Hi there!
 
-Built with [11ty](https://www.11ty.dev/) and [Sass](https://sass-lang.com/).
+Hi, I am Re (pronounced like Ray). I work at AWS as a Principal Solutions Architect where I spend my days designing resilient systems that scale.
 
-Made by [CLCK](https://github.com/CLCK0622).
+In my free time, I'm fascinated by another kind of system: the psychological ones that shape how we love, hurt, and heal.
 
-![image](https://github.com/user-attachments/assets/8c1874e4-8711-41a4-a545-4e4f271e654d)
+I look for patterns wherever I can find them—in distributed architectures, family dynamics, and the gap between words and meaning. I like to read for insight into human nature, dance (poorly) to reggaeton songs, and write about whatever catches my attention. I write to learn. My writing explores both the architecture of software and the architecture of transformation.
 
-## Install (all scripts are using `pnpm` by default)
+Living beneath the tall evergreens in Washington State has taught me that building a peaceful family is harder—and more rewarding—than building any system.
 
-```
-pnpm install
-```
-
-## Build
-
-```
-pnpm run build
-```
-
-## Start
-
-```
-pnpm run watch:css
-pnpm run start
-```
-
-![Alt](https://repobeats.axiom.co/api/embed/8b0541affca62356c769560c9e76935889b4096f.svg "Repobeats analytics image")
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=CLCK0622/11ty-Serene&type=Date)](https://www.star-history.com/#CLCK0622/11ty-Serene&Date)
+I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV)and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
