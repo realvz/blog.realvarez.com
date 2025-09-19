@@ -1,6 +1,8 @@
 const { DateTime } = require("luxon");
 const { JSDOM } = require("jsdom");
 const pluginRss = require("@11ty/eleventy-plugin-rss");
+const markdownIt = require("markdown-it");
+const markdownItFootnote = require("markdown-it-footnote");
 
 module.exports = function (eleventyConfig) {
     eleventyConfig.addPassthroughCopy("src/styles.css");
@@ -9,6 +11,15 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addPassthroughCopy("src/blog/**/*.{jpg,jpeg,png,gif,webp,svg}");
 
     eleventyConfig.addPlugin(pluginRss);
+
+    // Configure markdown-it with footnotes
+    const markdownLibrary = markdownIt({
+        html: true,
+        breaks: false,
+        linkify: true
+    }).use(markdownItFootnote);
+    
+    eleventyConfig.setLibrary("md", markdownLibrary);
 
     eleventyConfig.addCollection("pages", function (collectionApi) {
         return collectionApi.getFilteredByGlob("src/sections/*.md").sort((a, b) => a.data.order - b.data.order);

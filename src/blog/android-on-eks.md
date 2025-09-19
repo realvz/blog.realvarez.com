@@ -1,6 +1,6 @@
 ---
 title: "Running Android on Amazon EKS"
-date: 2024-01-05
+date: 2024-10-05
 layout: "post.njk"
 description: ""
 ---
