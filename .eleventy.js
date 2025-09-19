@@ -21,15 +21,12 @@ module.exports = function (eleventyConfig) {
     
     eleventyConfig.setLibrary("md", markdownLibrary);
 
-    // Add filter to convert Obsidian image syntax
-    eleventyConfig.addFilter("obsidianImages", function(content) {
-        if (typeof content === 'string') {
-            return content.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
-                const altText = caption ? caption.trim() : filename.trim();
-                return `![${altText}](${filename.trim()})`;
-            });
-        }
-        return content;
+    // Process Obsidian syntax before markdown parsing
+    eleventyConfig.addPreprocessor("md", "obsidian", (data, content) => {
+        return content.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
+            const altText = caption ? caption.trim() : filename.trim();
+            return `![${altText}](${filename.trim()})`;
+        });
     });
 
     eleventyConfig.addCollection("pages", function (collectionApi) {

@@ -34,7 +34,7 @@ Here's how the `veth` pair bridges the pod with the worker node's network:
 
 When pod-A on a node wants to communicate with pod-B on the *same* node, traffic from pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of pod B, which then enters pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge itself is connected to the host's network stack. 
 
-![[Kubernetes Networking-1758168916151.webp|Figure: Container network setup on a node]]
+![[Kubernetes-Networking-1758168916151.webp|Figure: Container network setup on a node]]
 
 To connect pods with services, pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
 
