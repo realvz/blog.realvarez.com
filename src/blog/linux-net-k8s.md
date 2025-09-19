@@ -5,7 +5,6 @@ layout: "post.njk"
 description: "This document provides an overview of the components that enable network communication between pods, nodes, and the external world."
 ---
 
-
 # Linux Networking for Kubernetes Users
 
 *Last updated: [[2025-09-18]]*
@@ -14,7 +13,7 @@ This document provides an overview of the components that enable network communi
 
 ---
 
-In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI is one such example. We'll discuss AWS VPC CNI later. For now, let's start with how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking. [^1]
+In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI[^1] is one such example. We'll discuss AWS VPC CNI later. For now, let's start with how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking.
 
 When a new Pod comes to life, the CNI first gives it its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
 
@@ -221,12 +220,11 @@ Cilium optimizes the data path for pod-to-pod communication. While the underlyi
 - [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
 - https://more.suse.com/rs/937-DCH-261/images/DivingDeepIntoKubernetesNetworking_final.pdf
 
-
 ---
 
-[^1]: [https://github.com/aws/amazon-vpc-cni-k8s](https://github.com/aws/amazon-vpc-cni-k8s)
+[^1]: https://github.com/aws/amazon-vpc-cni-k8s
 [^2]: https://cloudnativenow.com/topics/cloudnativenetworking/understanding-kubernetes-networking-architecture/
-[^3]: [amazon-vpc-cni-k8s/docs/cni-proposal.md at master · aws/amazon-vpc-cni-k8s - GitHub](https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/cni-proposal.md#solution-components)
+[^3]: [amazon-vpc-cni-k8s/docs/cni-proposal.md at master · aws/amazon-vpc-cni-k8s · GitHub](https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/cni-proposal.md#solution-components)
 [^4]: [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
 [^5]: [Faster firewalls with bpfilter LWN.net](https://lwn.net/Articles/1017705/?utm_source=chatgpt.com)
 [^6]: [Linux 2.4 Packet Filtering HOWTO: How Packets Traverse The Filters](https://www.netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-6.html)

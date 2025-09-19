@@ -12,12 +12,24 @@ module.exports = function (eleventyConfig) {
 
     eleventyConfig.addPlugin(pluginRss);
 
-    // Configure markdown-it with footnotes
+    // Configure markdown-it with footnotes and custom preprocessing
     const markdownLibrary = markdownIt({
         html: true,
         breaks: false,
         linkify: true
     }).use(markdownItFootnote);
+    
+    // Override the render method to preprocess Obsidian syntax
+    const originalRender = markdownLibrary.render;
+    markdownLibrary.render = function(src, env) {
+        // Convert ![[filename|caption]] to ![caption](filename) before markdown processing
+        const processedSrc = src.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
+            const cleanFilename = filename.trim().replace(/\s+/g, '-').toLowerCase();
+            const altText = caption ? caption.trim() : filename.trim();
+            return `![${altText}](${cleanFilename})`;
+        });
+        return originalRender.call(this, processedSrc, env);
+    };
     
     eleventyConfig.setLibrary("md", markdownLibrary);
 
@@ -33,18 +45,6 @@ module.exports = function (eleventyConfig) {
 
     eleventyConfig.addFilter("date", (dateObj, format = "yyyy-MM-dd") => {
         return DateTime.fromJSDate(dateObj, { zone: "utc" }).toFormat(format);
-    });
-
-    eleventyConfig.addTransform("convertObsidianImages", function (content, outputPath) {
-        if (outputPath && outputPath.endsWith(".html")) {
-            // Convert ![[filename|caption]] to ![caption](filename)
-            content = content.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
-                const cleanFilename = filename.trim().replace(/\s+/g, '-').toLowerCase();
-                const altText = caption ? caption.trim() : filename.trim();
-                return `![${altText}](${cleanFilename})`;
-            });
-        }
-        return content;
     });
 
     eleventyConfig.addTransform("lazyloadImages", function (content, outputPath) {
