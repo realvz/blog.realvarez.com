@@ -35,6 +35,18 @@ module.exports = function (eleventyConfig) {
         return DateTime.fromJSDate(dateObj, { zone: "utc" }).toFormat(format);
     });
 
+    eleventyConfig.addTransform("convertObsidianImages", function (content, outputPath) {
+        if (outputPath && outputPath.endsWith(".html")) {
+            // Convert ![[filename|caption]] to ![caption](filename)
+            content = content.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
+                const cleanFilename = filename.trim().replace(/\s+/g, '-').toLowerCase();
+                const altText = caption ? caption.trim() : filename.trim();
+                return `![${altText}](${cleanFilename})`;
+            });
+        }
+        return content;
+    });
+
     eleventyConfig.addTransform("lazyloadImages", function (content, outputPath) {
         if (outputPath && outputPath.endsWith(".html")) {
             const dom = new JSDOM(content);
