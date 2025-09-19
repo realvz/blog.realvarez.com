@@ -1,7 +1,32 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     init_mode();
     convertAltTextToCaptions();
+    convertWikiLinks();
 });
+
+function convertWikiLinks() {
+    const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+    );
+
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+        if (node.textContent.includes('[[') && node.textContent.includes(']]')) {
+            textNodes.push(node);
+        }
+    }
+
+    textNodes.forEach(textNode => {
+        const newContent = textNode.textContent.replace(/\[\[([^\]]+)\]\]/g, '$1');
+        if (newContent !== textNode.textContent) {
+            textNode.textContent = newContent;
+        }
+    });
+}
 
 function convertAltTextToCaptions() {
     const images = document.querySelectorAll('img');
