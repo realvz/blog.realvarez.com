@@ -12,25 +12,25 @@ module.exports = function (eleventyConfig) {
 
     eleventyConfig.addPlugin(pluginRss);
 
-    // Configure markdown-it with footnotes and custom preprocessing
+    // Configure markdown-it with footnotes
     const markdownLibrary = markdownIt({
         html: true,
         breaks: false,
         linkify: true
     }).use(markdownItFootnote);
     
-    // Override the render method to preprocess Obsidian syntax
-    const originalRender = markdownLibrary.render;
-    markdownLibrary.render = function(src, env) {
-        // Convert ![[filename|caption]] to ![caption](filename) before markdown processing
-        const processedSrc = src.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
-            const altText = caption ? caption.trim() : filename.trim();
-            return `![${altText}](${filename.trim()})`;
-        });
-        return originalRender.call(this, processedSrc, env);
-    };
-    
     eleventyConfig.setLibrary("md", markdownLibrary);
+
+    // Add filter to convert Obsidian image syntax
+    eleventyConfig.addFilter("obsidianImages", function(content) {
+        if (typeof content === 'string') {
+            return content.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
+                const altText = caption ? caption.trim() : filename.trim();
+                return `![${altText}](${filename.trim()})`;
+            });
+        }
+        return content;
+    });
 
     eleventyConfig.addCollection("pages", function (collectionApi) {
         return collectionApi.getFilteredByGlob("src/sections/*.md").sort((a, b) => a.data.order - b.data.order);
