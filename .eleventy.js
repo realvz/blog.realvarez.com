@@ -24,9 +24,8 @@ module.exports = function (eleventyConfig) {
     markdownLibrary.render = function(src, env) {
         // Convert ![[filename|caption]] to ![caption](filename) before markdown processing
         const processedSrc = src.replace(/!\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, (match, filename, caption) => {
-            const cleanFilename = filename.trim().replace(/\s+/g, '-').toLowerCase();
             const altText = caption ? caption.trim() : filename.trim();
-            return `![${altText}](${cleanFilename})`;
+            return `![${altText}](${filename.trim()})`;
         });
         return originalRender.call(this, processedSrc, env);
     };
