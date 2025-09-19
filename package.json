@@ -6,7 +6,7 @@
     "scripts": {
         "watch:css": "sass src/styles.scss _site/styles.css --watch",
         "build:css": "sass src/styles.scss _site/styles.css --no-source-map",
-        "build": "pnpm build:css && eleventy",
+        "build": "npm run build:css && eleventy",
         "start": "eleventy --serve"
     },
     "keywords": [],
