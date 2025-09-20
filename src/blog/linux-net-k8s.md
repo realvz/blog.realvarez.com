@@ -55,16 +55,15 @@ When a pod starts, the VPC CNI performs these steps:
     - Add policy routing rules to ensure proper traffic flow
 
 Host-side veth interface:
-• Remains in the host's network namespace (the default namespace)
-• Gets a name like `eni123abc456` or similar AWS-generated identifier
-• Acts as the "gateway" for the pod's traffic
-• Has the MAC address that the pod sees as its default gateway (169.254.1.1)
+- Remains in the host's network namespace (the default namespace)
+- Gets a name like `eni123abc456` or similar AWS-generated identifier
+- Acts as the "gateway" for the pod's traffic
+- Has the MAC address that the pod sees as its default gateway (169.254.1.1)
 
 Pod-side veth interface:
-• Gets moved into the pod's isolated network namespace using
-`ip link set veth-pod netns <pod-namespace>`
-• Gets renamed to `eth0` inside the pod (so applications see a standard interface name)
-• Receives the actual VPC IP address (like 192.168.82.72/32)
+- Gets moved into the pod's isolated network namespace using `ip link set veth-pod netns <pod-namespace>`
+- Gets renamed to `eth0` inside the pod (so applications see a standard interface name)
+- Receives the actual VPC IP address (like 192.168.82.72/32)
 
 ```sh
 # Inside the container
