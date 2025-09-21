@@ -244,6 +244,14 @@ Since, Pod IP addresses are not static, there are several challenges that are ye
 
 I am still exploring options like a VPN, [mirrord](https://mirrord.dev), an Ingress (for WebRTC only.) If you have a suggestion, I'd love to know. 
 
+You can always create an internal load balancer (NLB) for every developer Pod. However, it comes with additional cost. In this implementation, every user has their own virtual device (backed by a Deployment with replicas=1). For instance, developerA.myorg.com routes to a Pod dedicated to DeveloperA. Should DeveloperA's Pod fail and get restarted, she won't need to determine the IP address of the new Pod.
+
+![Figure 5. Using an internal NLB to route traffic to user Pods](Running%20Android%20on%20Kubernetes-1758418348117.webp)
+
+## Turn Servers
+
+**Update:** [Turn servers](https://github.com/google/android-emulator-container-scripts/blob/master/js/turn/README.MD) are the perfect solution for exposing devices on private networks. Here's a [Medium post](https://medium.com/@lemonchoismarceau/running-concurent-android-cuttlefish-jobs-webrtc-connection-08d79a1303dc) that explains this.
+
 ## Conclusion
 
 Using Cuttlefish with Kubernetes offers a scalable implementation for Android development and testing workflows. It allows you to maximize hardware utilization, especially when there's a need to run multiple virtual Android devices. This architecture also gives you full control over your virtual devices. You can customize the device to suit your specific needs. 
