@@ -48,7 +48,7 @@ Here's a summary:
   1. The device image file: `aosp_cf_x86_64_phone-img-xxxxxx.zip`
   2. The host package: `cvd-host_package.tar.gz`
 
-![Figure 1. The Android Continuous Integration site http://ci.android.com/](/images/Pasted%20image%2020241101142222.webp)
+![Figure 1. The Android Continuous Integration site http://ci.android.com/](/images/pasted-image-20241101142222.webp)
 
 ![Figure 2. The "Artifacts" tab in the Details panel.](/images/pasted-image-2020241101142823.webp)
 
