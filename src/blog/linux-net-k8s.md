@@ -5,6 +5,7 @@ layout: "post.njk"
 description: "This document provides an overview of the components that enable network communication between pods, nodes, and the external world."
 
 ---
+
 # Linux Networking for Kubernetes Users
 
 *Last updated: [[2025-09-18]]*
@@ -145,21 +146,12 @@ A *table* is a collection of chains. And a *chain* is an ordered list of rules. 
 When a packet hits a hook (let's say `PREROUTING`), the kernel checks tables that are registered for the hook. Each table has a set of built-in chains corresponding to the hooks.
 
 Netfilter has six tables[^6]:
-- `filter` table (default) --  This table is used for filtering packets (allowing or denying them). It contains the `INPUT`, `FORWARD`, and `OUTPUT` chains.
-- `nat` table -- Used for NAT (modifies packet source or destination addresses/ports). It contains the `POSTROUTING` (SNAT), `PREROUTING` (DNAT),  and `OUTPUT` chains.
-- `mangle` table -- Used for modifying packet headers (i.e. modify TTL, ToS, etc). It contains `PREROUTING`, `INPUT`, `FORWARD`, `OUTPUT`, and `POSTROUTING` chains.
-- `raw` table -- Used for very early processing of packets, primarily to configure connection tracking (e.g., skip connection tracking). It contains `PREROUTING` and `OUTPUT` chains.
-- `security` table -- Used for mandatory access control (MAC) networking rules. It contains `PREROUTING`, `INPUT`, `FORWARD`, `OUTPUT`, and `POSTROUTING` chains.
+- **`nat`** -- for address translation (DNAT and SNAT).
+- **`filter`** -- for deciding whether to allow or block traffic.
+- **`mangle`** -- for adjusting packet headers (rarely touched by Kubernetes).
+- **`raw`** -- for rules that should bypass connection tracking.
 
-| Tables ↓/Chains→ | PREROUTING | INPUT | FORWARD | OUTPUT | POSTROUTING |
-| ---------------- | ---------- | ----- | ------- | ------ | ----------- |
-| raw              | ✓          |       |         | ✓      |             |
-| filter           |            | ✓     | ✓       | ✓      |             |
-| nat (DNAT)       | ✓          |       |         | ✓      |             |
-| mangle           | ✓          | ✓     | ✓       | ✓      | ✓           |
-| security         |            | ✓     | ✓       | ✓      |             |
-| nat (SNAT)       |            |       |         |        | ✓           |
-
+kube-proxy primarily works in the **nat** and **filter** tables.
 ## Conntrack
 
 *Conntrack (Connection Tracking)* is a `netfilter` component that tracks the state of all network connections (or "flows") passing through the Linux kernel. It's used for stateful operations like NAT and firewalls.
