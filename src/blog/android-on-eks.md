@@ -1,8 +1,10 @@
 ---
+
 title: "Running Android on Amazon EKS"
 date: 2024-10-05
 layout: "post.njk"
-description: ""
+description: "Create Android virtual devices on EC2 metal instances and manage them using Kubernetes"
+
 ---
 
 # Running Android on Amazon EKS
