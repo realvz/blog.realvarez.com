@@ -5,7 +5,7 @@ permalink: "/blog/"
 order: 3
 ---
 
-# 💡 Blogs
+# Blog Posts
 
 Stay updated with [my RSS Feed](/blog/rss.xml)!
 
