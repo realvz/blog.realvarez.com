@@ -18,3 +18,14 @@ Living beneath the tall evergreens in Washington State has taught me that buildi
 I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV)and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
 
 PS: My older posts are on [Medium](https://medium.com/@realz)
+
+## 💡 Blogs
+
+<ul class="blogList">
+  {% for post in collections.blog %}
+  <li class=blogListItem>
+    <a href="{{ post.url }}">{{ post.data.title }}</a> - {{ post.date | date("yyyy-MM-dd") }}
+    <p>{{ post.data.description }}</p>
+  </li>
+  {% endfor %}
+</ul>
