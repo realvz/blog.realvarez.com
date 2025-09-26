@@ -28,7 +28,7 @@ This translation established not just Indian methods of healing and celestial ob
 
 From Baghdad, these ideas spread further westwards in places like Egypt. Scholars in centers of learning from Cairo to Cordoba (under Moorish control) eagerly absorbed and built upon this knowledge. The works of Persian mathematician Al-Khwarizmi, particularly his book "On the Calculation with Hindu Numerals" (c. 825 CE), played a crucial role in disseminating Indian mathematical concepts, including zero, throughout the Islamic world and beyond.
 
-As the Islamic Golden Age flourished, these mathematical innovations found their way to the edges of the Muslim world, including North Africa. It was here, in the coastal city of Bejaïa (in modern-day Algeria).
+As the Islamic Golden Age flourished, these mathematical innovations found their way to the edges of the Muslim world, including North Africa. It was here, in the coastal city of Bejaïa (in modern-day Algeria) where it will eventually cross the Mediterranean. 
 
 Fast forward about half a millennium to 1202 CE. A young Italian mathematician named Leonardo of Pisa (born c. 1170 CE), better known by his nickname 'Fibonacci' (yes, the same guy that came up with the [famous sequence](https://en.wikipedia.org/wiki/Fibonacci_sequence)), returns from Algeria to his homeland. Fibonacci had grown up in a Pisan trading post in Bejaïa, where he had immersed himself in Arab culture and mathematics, becoming fluent in Arabic and well-versed in the mathematical innovations that had originated in India centuries earlier.
 
