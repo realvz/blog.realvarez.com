@@ -8,7 +8,7 @@ description: "This document provides an overview of the components that enable n
 
 # Linux Networking for Kubernetes Users
 
-*Last updated: `= dateformat(this.file.mtime, "MMMM dd, yyyy")`*
+*Last updated: [2025-09-25](2025-09-25)*
 
 This document provides an overview of the components that enable network communication between pods, nodes, and the external world.
 
