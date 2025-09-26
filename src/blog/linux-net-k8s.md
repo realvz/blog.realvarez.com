@@ -3,9 +3,8 @@ title: "Linux Networking for Kubernetes Users"
 date: 2024-01-03
 layout: "post.njk"
 description: "This document provides an overview of the components that enable network communication between pods, nodes, and the external world."
+
 ---
-
-
 # Linux Networking for Kubernetes Users
 
 *Last updated: [[2025-09-18]]*
@@ -18,7 +17,7 @@ In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equi
 
 When a new Pod comes to life, the CNI first gives it its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
 
-> A *network namespace* is a feature in Linux that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other. [^2]
+> A *network namespace* is a feature in [[Linux]] that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other. [^2]
 
 ![Figure: Linux Network Namespaces(https://wizardzines.com/comics/network-namespaces/)](IMG_2965.jpeg)
 
@@ -33,7 +32,7 @@ Here's how the `veth` pair bridges the pod with the worker node's network:
 
 ## Inter-Pod Communication
 
-When pod-A on a node wants to communicate with pod-B on the *same* node, traffic from pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of pod B, which then enters pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge itself is connected to the host's network stack. 
+When pod-A on a node wants to communicate with pod-B on the *same* node, traffic from pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of pod B, which then enters pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge interface is attached to the host network namespace, allowing traffic between pods and the host or external networks to be forwarded.
 
 ![Figure: Container network setup on a node](Kubernetes%20Networking-1758168916151.webp)
 
@@ -89,15 +88,13 @@ $ ip neighbour
 169.254.1.1 dev eth0 lladdr 8e:62:30:ec:7f:37 PERMANENT
 ```
 
-
-
 ![Figure: Pinging one pod from another](Kubernetes%20Networking-1758212585275.webp)
 
 ## Netfilter and Packet Routing in Kubernetes
 
-[netfilter](https://netfilter.org) is a collection of packet filtering hooks in Linux kernel network stack. Every *routable* packet (operating at Layer 3) in the system triggers netfilter hooks as it passes through the stack. We can use these hooks to inspect, modify, or filter traffic.
+When a pod sends traffic to a Kubernetes Service, a pod on another node, or to any external services (like google.com), the traffic is routed using netfilter. 
 
-Kubernetes relies on netfilter hooks to ensure that pods, which usually have internal, private IP addresses, can communicate with each other and with external services. netfilter is not used for pod-to-pod communication on the same node, which happens at Layer 2. 
+[netfilter](https://netfilter.org) is a collection of packet filtering hooks in Linux kernel network layer. Every *routable* packet (operating at Layer 3) in the system triggers netfilter hooks as it passes through the stack. We can use these hooks to inspect, modify, or filter traffic.
 
 There are five netfilter hooks:
 - `PREROUTING` -- The first hook when a packet arrives on the node from the outside world. DNAT (Destination Network Address Translation) is an example of this hook. `kube-proxy`uses this chain to change the destination IP of incoming Service traffic from a ClusterIP to a backend pod IP.
@@ -114,13 +111,14 @@ There are five netfilter hooks:
 | **OUTPUT**      | First touch on locally-generated packet | Pod egress or kube-apiserver outbound webhook calls            |
 | **POSTROUTING** | Last touch before wire                  | SNAT (MASQUERADE) pod IP → worker node IP for external replies |
 
-We can model three kinds of traffic flows based on their destination:
-- Traffic passing through the node: This is traffic not destined for the node itself, such as pod-to-pod communication on different nodes. This traffic follows the path: `PREROUTING` → `FORWARD` → `POSTROUTING`.
-- Incoming traffic to the node -- This is traffic directed at the node itself, like a request to a service running on the host. This traffic follows the path: `PREROUTING` → `INPUT`.
-- Outgoing traffic from the node -- This is traffic originating from the node itself. This traffic follows the path: `OUTPUT` → `POSTROUTING`.[^4]
+Conceptually, we can model three traffic flows based on their source and destination:
+- **Pod → external** -- PREROUTING → FORWARD → POSTROUTING (SNAT applies here).
+- **External → pod (via Service)** -- PREROUTING (DNAT to pod) → FORWARD.
+- **Pod → pod (via Service)** -- PREROUTING → INPUT.
+
 ![Figure: A simplified diagram of Netfilter hooks and packet flow](Kubernetes%20Networking-1758135896763.webp)
 
-Netfilter allows traffic originating from pods to be routed out of the node's primary network interface for external communication (with SNAT applied by `netfilter`, as we discussed). Similarly, incoming traffic destined for a Pod (e.g., via a Service's DNAT) arrives at the Node, is processed by `netfilter`, and then routed to the correct Pod via the bridge and its associated `veth` pair.
+Netfilter allows traffic originating from pods to be routed out of the node's primary network interface for external communication (with SNAT applied by netfilter). Similarly, incoming traffic destined for a pod (e.g., via a Service's DNAT) arrives at the node, is processed by `netfilter`, and then routed to the correct pod via the bridge and its associated `veth` pair.
 
 For pod-to-external traffic (outside the VPC), the VPC CNI uses SNAT to translate the pod's VPC IP to the node's primary ENI IP address. This is handled by an iptables rule:
 
@@ -130,7 +128,7 @@ For pod-to-external traffic (outside the VPC), the VPC CNI uses SNAT to translat
 
 This ensures that external services see traffic as coming from the node's IP, allowing proper return traffic routing.
 
-[Iptables](https://en.wikipedia.org/wiki/Iptables) was the standard packet-filtering solution for a long time, but has been slowly replaced by [nftables](https://lwn.net/Articles/867185/). Nftables was in turn supplanted in some areas by eBPF.[^5]
+[Iptables](https://en.wikipedia.org/wiki/Iptables) was the standard packet-filtering solution for a long time, but has been replaced by [nftables](https://lwn.net/Articles/867185/). Nftables was in turn supplanted in some areas by eBPF.[^4]
 
 ### Netfilter Tables and Chains
 
@@ -138,15 +136,15 @@ Whenever a network packet reaches one of Netfilter's hooks (like `PREROUTING` or
 
 As mentioned earlier, you can define custom rules at each hook to control the traffic. These rules aren't attached directly to the hooks; instead, they're organized into "chains" within specific Netfilter "tables". 
 
-The structure is: Table -> Chain -> Rule. 
+The structure is: Table → Chain → Rule. 
 
 A *table* is a collection of chains. And a *chain* is an ordered list of rules. Each rule has a match condition (for example, if source IP is 1.1.1.1) and an action (such as ACCEPT, DROP, DNAT).
 
-> A chain is a checklist of *rules*. Each rule says "if the packet header looks like this, then here's what to do with the packet". If the rule doesn't match the packet, then the next rule in the chain is consulted. Finally, if there are no more rules to consult, then the kernel looks at the chain *policy* to decide what to do. In a security-conscious system, this policy usually tells the kernel to DROP the packet.[^6]
+> A chain is a checklist of *rules*. Each rule says "if the packet header looks like this, then here's what to do with the packet". If the rule doesn't match the packet, then the next rule in the chain is consulted. Finally, if there are no more rules to consult, then the kernel looks at the chain *policy* to decide what to do. In a security-conscious system, this policy usually tells the kernel to DROP the packet.[^5]
 
 When a packet hits a hook (let's say `PREROUTING`), the kernel checks tables that are registered for the hook. Each table has a set of built-in chains corresponding to the hooks.
 
-Netfilter has six tables[^7]:
+Netfilter has six tables[^6]:
 - `filter` table (default) --  This table is used for filtering packets (allowing or denying them). It contains the `INPUT`, `FORWARD`, and `OUTPUT` chains.
 - `nat` table -- Used for NAT (modifies packet source or destination addresses/ports). It contains the `POSTROUTING` (SNAT), `PREROUTING` (DNAT),  and `OUTPUT` chains.
 - `mangle` table -- Used for modifying packet headers (i.e. modify TTL, ToS, etc). It contains `PREROUTING`, `INPUT`, `FORWARD`, `OUTPUT`, and `POSTROUTING` chains.
@@ -188,9 +186,15 @@ You can monitor `conntrack` usage to identify potential issues:
 - Detailed info -- `conntrack -L` (can be very verbose on busy systems)
 - Errors in dmesg -- `dmesg | grep nf_conntrack`
 
+## NFTables Mode for Kube-proxy
+
+<https://kubernetes.io/blog/2025/02/28/nftables-kube-proxy/>
+
+<https://github.com/kubernetes/enhancements/blob/master/keps/sig-network/3866-nftables-proxy/README.md>
+
 ## [[eBPF]] And Netfilter
 
-The `bpfilter` project enhances Netfilter by converting `iptables` or `nftables` rules into high-performance eBPF programs that run entirely in kernel space[^8]. Traditional Netfilter can be slow for complex rules that require copying packets to user-space for tasks like deep inspection or observability. eBPF eliminates these copies by processing packets directly at Netfilter's hooks (like PREROUTING or INPUT). [^9]
+The `bpfilter` project enhances Netfilter by converting `iptables` or `nftables` rules into high-performance eBPF programs that run entirely in kernel space[^7]. Traditional Netfilter can be slow for complex rules that require copying packets to user-space for tasks like deep inspection or observability. eBPF eliminates these copies by processing packets directly at Netfilter's hooks. [^8]
 
 The core motivation behind `bpfilter` is **performance**. While Netfilter is powerful, its traditional rule processing can become a bottleneck with very large and complex rule sets (common in large Kubernetes with a high Pod churn rate). By converting these rules into eBPF programs, `bpfilter` leverages eBPF's advantages. Note that, `bpfilter` is not a full replacement for Netfilter but a layer that translates rules into eBPF for faster processing.
 
@@ -207,30 +211,30 @@ CNIs like Cilium use eBPF and don't need iptables. Cilium provides an ==eBPF-ba
 
 Standard Kubernetes Network Policies are often implemented by CNI plugins by generating `iptables` (or eBPF) rules. These rules are added to the `FORWARD` chain (and sometimes `INPUT`/`OUTPUT` for host policies).
 
-Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on pod `veth` interfaces) to inspect packets as they enter a pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^10]
+Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on pod `veth` interfaces) to inspect packets as they enter a pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^9]
 
 ### Pod-to-Pod Networking in Cilium
 
 Even for basic pod-to-pod communication, Cilium leverages eBPF. Traditionally, packets between pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
 
-Cilium optimizes the data path for pod-to-pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^11]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular pod traffic, leading to lower latency and higher throughput.
+Cilium optimizes the data path for pod-to-pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^10]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular pod traffic, leading to lower latency and higher throughput.
 
 ## Further Reading
 
 - [The Architecture of Iptables and Netfilter • CloudSigma](https://blog.cloudsigma.com/the-architecture-of-iptables-and-netfilter/#:~:text=It%20indicates%20the%20chains%20that,✓)
 - [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
 - <https://more.suse.com/rs/937-DCH-261/images/DivingDeepIntoKubernetesNetworking_final.pdf>
+- <https://www.lucavall.in/blog/kubernetes-networking-from-packets-to-pods>
 
 ---
 
 [^1]: <https://github.com/aws/amazon-vpc-cni-k8s>
 [^2]: <https://cloudnativenow.com/topics/cloudnativenetworking/understanding-kubernetes-networking-architecture/>
 [^3]: [amazon-vpc-cni-k8s/docs/cni-proposal.md at master · aws/amazon-vpc-cni-k8s · GitHub](https://github.com/aws/amazon-vpc-cni-k8s/blob/master/docs/cni-proposal.md#solution-components)
-[^4]: [Netfilter’s connection tracking system](https://people.netfilter.org/pablo/docs/login.pdf)
-[^5]: [Faster firewalls with bpfilter LWN.net](https://lwn.net/Articles/1017705/?utm_source=chatgpt.com)
-[^6]: [Linux 2.4 Packet Filtering HOWTO: How Packets Traverse The Filters](https://www.netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-6.html)
-[^7]: [A Deep Dive into Iptables and Netfilter Architecture \| DigitalOcean](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
-[^8]: <https://linux-audit.com/bpfilter-next-generation-linux-firewall/>
-[^9]: [BPF comes to firewalls LWN.net](https://lwn.net/Articles/747551/)
-[^10]: [Network Policy — Cilium 1.9.18 documentation](https://docs.cilium.io/en/v1.9/concepts/kubernetes/policy/)
-[^11]: [Routing — Cilium 1.18.2 documentation](https://docs.cilium.io/en/stable/network/concepts/routing/?utm_source=chatgpt.com)
+[^4]: [Faster firewalls with bpfilter LWN.net](https://lwn.net/Articles/1017705/?utm_source=chatgpt.com)
+[^5]: [Linux 2.4 Packet Filtering HOWTO: How Packets Traverse The Filters](https://www.netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-6.html)
+[^6]: [A Deep Dive into Iptables and Netfilter Architecture \| DigitalOcean](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
+[^7]: <https://linux-audit.com/bpfilter-next-generation-linux-firewall/>
+[^8]: [BPF comes to firewalls LWN.net](https://lwn.net/Articles/747551/)
+[^9]: [Network Policy — Cilium 1.9.18 documentation](https://docs.cilium.io/en/v1.9/concepts/kubernetes/policy/)
+[^10]: [Routing — Cilium 1.18.2 documentation](https://docs.cilium.io/en/stable/network/concepts/routing/?utm_source=chatgpt.com)
