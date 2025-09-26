@@ -8,7 +8,7 @@ description: "This document provides an overview of the components that enable n
 
 # Linux Networking for Kubernetes Users
 
-*Last updated: [[2025-09-18]]*
+*Last updated: `= dateformat(this.file.mtime, "MMMM dd, yyyy")`*
 
 This document provides an overview of the components that enable network communication between pods, nodes, and the external world.
 
@@ -187,7 +187,7 @@ You can monitor `conntrack` usage to identify potential issues:
 
 ## [[eBPF]] And Netfilter
 
-The `bpfilter` project enhances Netfilter by converting `iptables` or `nftables` rules into high-performance eBPF programs that run entirely in kernel space[^7]. Traditional Netfilter can be slow for complex rules that require copying packets to user-space for tasks like deep inspection or observability. eBPF eliminates these copies by processing packets directly at Netfilter's hooks. [^8]
+The `bpfilter` project enhances Netfilter by converting `iptables` or `nftables` rules into high-performance eBPF programs that run entirely in kernel space. Traditional Netfilter can be slow for complex rules that require copying packets to user-space for tasks like deep inspection or observability. eBPF eliminates these copies by processing packets directly at Netfilter's hooks. [^7]
 
 The core motivation behind `bpfilter` is **performance**. While Netfilter is powerful, its traditional rule processing can become a bottleneck with very large and complex rule sets (common in large Kubernetes with a high Pod churn rate). By converting these rules into eBPF programs, `bpfilter` leverages eBPF's advantages. Note that, `bpfilter` is not a full replacement for Netfilter but a layer that translates rules into eBPF for faster processing.
 
@@ -204,13 +204,13 @@ CNIs like Cilium use eBPF and don't need iptables. Cilium provides an ==eBPF-ba
 
 Standard Kubernetes Network Policies are often implemented by CNI plugins by generating `iptables` (or eBPF) rules. These rules are added to the `FORWARD` chain (and sometimes `INPUT`/`OUTPUT` for host policies).
 
-Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on Pod `veth` interfaces) to inspect packets as they enter a Pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^9]
+Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on Pod `veth` interfaces) to inspect packets as they enter a Pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^8]
 
 ### Pod-to-Pod Networking in Cilium
 
 Even for basic Pod-to-Pod communication, Cilium leverages eBPF. Traditionally, packets between Pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
 
-Cilium optimizes the data path for Pod-to-Pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^10]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular Pod traffic, leading to lower latency and higher throughput.
+Cilium optimizes the data path for Pod-to-Pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^9]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular Pod traffic, leading to lower latency and higher throughput.
 
 ## Further Reading
 
@@ -227,7 +227,6 @@ Cilium optimizes the data path for Pod-to-Pod communication. While the underlyi
 [^4]: [Faster firewalls with bpfilter LWN.net](https://lwn.net/Articles/1017705/?utm_source=chatgpt.com)
 [^5]: [Linux 2.4 Packet Filtering HOWTO: How Packets Traverse The Filters](https://www.netfilter.org/documentation/HOWTO/packet-filtering-HOWTO-6.html)
 [^6]: [A Deep Dive into Iptables and Netfilter Architecture \| DigitalOcean](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)
-[^7]: <https://linux-audit.com/bpfilter-next-generation-linux-firewall/>
-[^8]: [BPF comes to firewalls LWN.net](https://lwn.net/Articles/747551/)
-[^9]: [Network Policy — Cilium 1.9.18 documentation](https://docs.cilium.io/en/v1.9/concepts/kubernetes/policy/)
-[^10]: [Routing — Cilium 1.18.2 documentation](https://docs.cilium.io/en/stable/network/concepts/routing/?utm_source=chatgpt.com)
+[^7]: [BPF comes to firewalls LWN.net](https://lwn.net/Articles/747551/)
+[^8]: [Network Policy — Cilium 1.9.18 documentation](https://docs.cilium.io/en/v1.9/concepts/kubernetes/policy/)
+[^9]: [Routing — Cilium 1.18.2 documentation](https://docs.cilium.io/en/stable/network/concepts/routing/?utm_source=chatgpt.com)
