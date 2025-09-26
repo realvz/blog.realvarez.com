@@ -1,6 +1,7 @@
 const { DateTime } = require("luxon");
 const { JSDOM } = require("jsdom");
 const pluginRss = require("@11ty/eleventy-plugin-rss");
+const pluginSitemap = require("@quasibit/eleventy-plugin-sitemap");
 const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
 
@@ -9,8 +10,14 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addPassthroughCopy("src/main.js");
     eleventyConfig.addPassthroughCopy("src/images");
     eleventyConfig.addPassthroughCopy("src/blog/**/*.{jpg,jpeg,png,gif,webp,svg}");
+    eleventyConfig.addPassthroughCopy("src/robots.txt");
 
     eleventyConfig.addPlugin(pluginRss);
+    eleventyConfig.addPlugin(pluginSitemap, {
+        sitemap: {
+            hostname: "https://realvarez.com",
+        },
+    });
 
     // Configure markdown-it with footnotes
     const markdownLibrary = markdownIt({
