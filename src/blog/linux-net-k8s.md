@@ -14,55 +14,55 @@ This document provides an overview of the components that enable network communi
 
 ---
 
-In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI[^1] is one such example. We'll discuss AWS VPC CNI later. For now, let's start with how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking.
+In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI[^1] is one such example. Let's first review how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking.
 
-When a new Pod comes to life, the CNI first gives it its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
+When a new Pod starts, the CNI gives the Pod its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
 
-> A *network namespace* is a feature in [[Linux]] that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other. [^2]
+> "A *network namespace* is a feature in [[Linux]] that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other." [^2]
 
 ![Figure: Linux Network Namespaces(https://wizardzines.com/comics/network-namespaces/)](IMG_2965.jpeg)
 
 Each Pod (residing in its own network namespace) then receives a `veth` pair. A *`veth`* pair consists of two interconnected virtual network interfaces. Whatever goes into one end comes out the other, and vice-versa. 
 
-Here's how the `veth` pair bridges the pod with the worker node's network:
+Here's how the `veth` pair bridges the Pod with the worker node's network:
 1. Veth Pair Creation -- The CNI plugin creates a `veth` pair. Let's call the two ends `veth0-pod` and `veth0-bridge`.
 2. `veth0-pod` into Pod Namespace -- One end of the `veth` pair (`veth0-pod`) is moved into the Pod's newly created network namespace (`ip link set veth0-pod netns <pod-namespace>`). Inside the Pod, this interface is typically renamed to a standard name like `eth0` (`ip link set veth0-pod name eth0`). This `eth0` is what the applications running in the Pod see and use to send and receive network traffic.
 3. `veth0-bridge` to the Bridge -- The other end of the `veth` pair (`veth0-bridge`) remains in the host's network namespace and is then attached to the CNI-created Linux bridge (e.g., `cni0`, `br0`, or `docker0`).
 
-![Figure: How pods communicate with other pods](Kubernetes%20Networking-1758132101915.webp)
+![Figure: How pods communicate with other Pods](Kubernetes%20Networking-1758132101915.webp)
 
 ## Inter-Pod Communication
 
-When pod-A on a node wants to communicate with pod-B on the *same* node, traffic from pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of pod B, which then enters pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge interface is attached to the host network namespace, allowing traffic between pods and the host or external networks to be forwarded.
+When Pod-A on a node wants to communicate with Pod-B on the *same* node, traffic from Pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of Pod B, which then enters Pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge interface is attached to the host network namespace, allowing traffic between Pods and the host or external networks to be forwarded.
 
 ![Figure: Container network setup on a node](Kubernetes%20Networking-1758168916151.webp)
 
-To connect pods with services, pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
+To connect Pods with services, Pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
 
 ## AWS VPC CNI
 
-The AWS VPC CNI plugin takes a different approach from traditional CNIs. Instead of creating a bridge and using NAT for external communication, it leverages AWS VPC networking primitives directly. Each pod gets a real VPC IP address from the subnet where the worker node resides.[^3]
+The AWS VPC CNI plugin takes a different approach from traditional CNIs. Instead of creating a bridge and using NAT for external communication, it leverages AWS VPC networking primitives directly. Each Pod gets a real VPC IP address from the subnet where the worker node resides.[^3]
 
-When a pod starts, the VPC CNI performs these steps:
+When a Pod starts, the VPC CNI performs these steps:
 1. Get IP Address – The Local IP Address Manager (L-IPAM) provides a secondary IP address from its warm pool
-2. Create veth Pair – One end goes to the pod's network namespace, the other stays on the host
+2. Create veth Pair – One end goes to the Pod's network namespace, the other stays on the host
 3. Configure Pod Namespace:
-    - Assign the VPC IP address to the pod's `eth0` interface with a `/32` subnet mask
+    - Assign the VPC IP address to the Pod's `eth0` interface with a `/32` subnet mask
     - Add a default route via `169.254.1.1` (a link-local address)
     - Add a static ARP entry mapping the gateway to the host-side veth interface
 4. Configure Host Side:
-    - Add a host route for the pod's IP pointing to the host-side veth interface
+    - Add a host route for the Pod's IP pointing to the host-side veth interface
     - Add policy routing rules to ensure proper traffic flow
 
 Host-side veth interface:
 - Remains in the host's network namespace (the default namespace)
 - Gets a name like `eni123abc456` or similar AWS-generated identifier
-- Acts as the "gateway" for the pod's traffic
-- Has the MAC address that the pod sees as its default gateway (169.254.1.1)
+- Acts as the "gateway" for the Pod's traffic
+- Has the MAC address that the Pod sees as its default gateway (169.254.1.1)
 
 Pod-side veth interface:
-- Gets moved into the pod's isolated network namespace using `ip link set veth-pod netns <pod-namespace>`
-- Gets renamed to `eth0` inside the pod (so applications see a standard interface name)
+- Gets moved into the Pod's isolated network namespace using `ip link set veth-pod netns <pod-namespace>`
+- Gets renamed to `eth0` inside the Pod (so applications see a standard interface name)
 - Receives the actual VPC IP address (like 192.168.82.72/32)
 
 ```sh
@@ -89,39 +89,39 @@ $ ip neighbour
 169.254.1.1 dev eth0 lladdr 8e:62:30:ec:7f:37 PERMANENT
 ```
 
-![Figure: Pinging one pod from another](Kubernetes%20Networking-1758212585275.webp)
+![Figure: Pinging one Pod from another](Kubernetes%20Networking-1758212585275.webp)
 
 ## Netfilter and Packet Routing in Kubernetes
 
-When a pod sends traffic to a Kubernetes Service, a pod on another node, or to any external services (like google.com), the traffic is routed using netfilter. 
+When a Pod sends traffic to a Kubernetes Service, a Pod on another node, or to any external services (like google.com), the traffic is routed using netfilter. 
 
 [netfilter](https://netfilter.org) is a collection of packet filtering hooks in Linux kernel network layer. Every *routable* packet (operating at Layer 3) in the system triggers netfilter hooks as it passes through the stack. We can use these hooks to inspect, modify, or filter traffic.
 
 There are five netfilter hooks:
-- `PREROUTING` -- The first hook when a packet arrives on the node from the outside world. DNAT (Destination Network Address Translation) is an example of this hook. `kube-proxy`uses this chain to change the destination IP of incoming Service traffic from a ClusterIP to a backend pod IP.
+- `PREROUTING` -- The first hook when a packet arrives on the node from the outside world. DNAT (Destination Network Address Translation) is an example of this hook. `kube-proxy`uses this chain to change the destination IP of incoming Service traffic from a ClusterIP to a backend Pod IP.
 - `INPUT` -- For packets meant for the local node itself. It's the final hook for incoming traffic.  
-- `FORWARD` -- Packets not meant for the local node go through this hook (e.g., pod-to-pod communication on different Nodes, Pod to external service). INPUT and FORWARD hooks controls inter-pod communication and network policies. 
+- `FORWARD` -- Packets not meant for the local node go through this hook (e.g., Pod-to-Pod communication on different Nodes, Pod to external service). INPUT and FORWARD hooks controls inter-Pod communication and network policies. 
 - `OUTPUT` -- This is the first hook all outgoing traffic hit.  
-- `POSTROUTING` -- The last hook for traffic leaving the node. It's used for tasks such as changing the return address on an envelope. SNAT (Source NAT) is an example. When a pod communicates externally, its source IP (the pod's internal IP) is translated to the node's IP here, so external services can send replies back to the node.
+- `POSTROUTING` -- The last hook for traffic leaving the node. It's used for tasks such as changing the return address on an envelope. SNAT (Source NAT) is an example. When a Pod communicates externally, its source IP (the Pod's internal IP) is translated to the node's IP here, so external services can send replies back to the node.
 
 | Hook            | When the kernel hits it                 | Typical Kubernetes use-case                                    |
 | --------------- | --------------------------------------- | -------------------------------------------------------------- |
-| **PREROUTING**  | First touch on arriving packet          | kube-proxy DNAT: ClusterIP → pod IP                            |
-| **INPUT**       | Packet destined to local host           | NodePort/health-check traffic to kubelet or hostNetwork pod    |
-| **FORWARD**     | Packet just passing through node        | Pod-to-pod on different nodes; enforced by NetworkPolicy rules |
+| **PREROUTING**  | First touch on arriving packet          | kube-proxy DNAT: ClusterIP → Pod IP                            |
+| **INPUT**       | Packet destined to local host           | NodePort/health-check traffic to kubelet or hostNetwork Pod    |
+| **FORWARD**     | Packet just passing through node        | Pod-to-Pod on different nodes; enforced by NetworkPolicy rules |
 | **OUTPUT**      | First touch on locally-generated packet | Pod egress or kube-apiserver outbound webhook calls            |
-| **POSTROUTING** | Last touch before wire                  | SNAT (MASQUERADE) pod IP → worker node IP for external replies |
+| **POSTROUTING** | Last touch before wire                  | SNAT (MASQUERADE) Pod IP → worker node IP for external replies |
 
 Conceptually, we can model three traffic flows based on their source and destination:
 - **Pod → external** -- PREROUTING → FORWARD → POSTROUTING (SNAT applies here).
-- **External → pod (via Service)** -- PREROUTING (DNAT to pod) → FORWARD.
-- **Pod → pod (via Service)** -- PREROUTING → INPUT.
+- **External → Pod (via Service)** -- PREROUTING (DNAT to Pod) → FORWARD.
+- **Pod → Pod (via Service)** -- PREROUTING → INPUT.
 
 ![Figure: A simplified diagram of Netfilter hooks and packet flow](Kubernetes%20Networking-1758135896763.webp)
 
-Netfilter allows traffic originating from pods to be routed out of the node's primary network interface for external communication (with SNAT applied by netfilter). Similarly, incoming traffic destined for a pod (e.g., via a Service's DNAT) arrives at the node, is processed by `netfilter`, and then routed to the correct pod via the bridge and its associated `veth` pair.
+Netfilter allows traffic originating from Pods to be routed out of the node's primary network interface for external communication (with SNAT applied by netfilter). Similarly, incoming traffic destined for a Pod (e.g., via a Service's DNAT) arrives at the node, is processed by `netfilter`, and then routed to the correct Pod via the bridge and its associated `veth` pair.
 
-For pod-to-external traffic (outside the VPC), the VPC CNI uses SNAT to translate the pod's VPC IP to the node's primary ENI IP address. This is handled by an iptables rule:
+For Pod-to-external traffic (outside the VPC), the VPC CNI uses SNAT to translate the Pod's VPC IP to the node's primary ENI IP address. This is handled by an iptables rule:
 
 ```bash
 -A POSTROUTING ! -d <VPC-CIDR> -m comment --comment "kubernetes: SNAT for outbound traffic from cluster" -m addrtype ! --dst-type LOCAL -j SNAT --to-source <Primary IP on the Primary ENI>
@@ -152,6 +152,7 @@ Netfilter has six tables[^6]:
 - **`raw`** -- for rules that should bypass connection tracking.
 
 kube-proxy primarily works in the **nat** and **filter** tables.
+
 ## Conntrack
 
 *Conntrack (Connection Tracking)* is a `netfilter` component that tracks the state of all network connections (or "flows") passing through the Linux kernel. It's used for stateful operations like NAT and firewalls.
@@ -203,13 +204,13 @@ CNIs like Cilium use eBPF and don't need iptables. Cilium provides an ==eBPF-ba
 
 Standard Kubernetes Network Policies are often implemented by CNI plugins by generating `iptables` (or eBPF) rules. These rules are added to the `FORWARD` chain (and sometimes `INPUT`/`OUTPUT` for host policies).
 
-Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on pod `veth` interfaces) to inspect packets as they enter a pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^9]
+Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on Pod `veth` interfaces) to inspect packets as they enter a Pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^9]
 
 ### Pod-to-Pod Networking in Cilium
 
-Even for basic pod-to-pod communication, Cilium leverages eBPF. Traditionally, packets between pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
+Even for basic Pod-to-Pod communication, Cilium leverages eBPF. Traditionally, packets between Pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
 
-Cilium optimizes the data path for pod-to-pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^10]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular pod traffic, leading to lower latency and higher throughput.
+Cilium optimizes the data path for Pod-to-Pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^10]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular Pod traffic, leading to lower latency and higher throughput.
 
 ## Further Reading
 
