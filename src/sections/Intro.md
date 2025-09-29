@@ -19,6 +19,8 @@ I've written a book about building ML systems on Kubernetes. It is [available f
 
 PS: My older posts are on [Medium](https://medium.com/@realz)
 
+Opinions expressed are solely my own and do not express the views or opinions of my employer.
+
 ---
 
 ## Recent Posts
