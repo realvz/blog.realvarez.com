@@ -96,6 +96,33 @@ li {
   margin-bottom: 20px;
 }
 
+// Blockquotes
+blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid #2563eb;
+  background-color: #f8fafc;
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+  color: $secondary-text-color;
+  
+  p {
+    margin-bottom: 0.5rem;
+    color: inherit;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  // Nested blockquotes
+  blockquote {
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+    border-left: 3px solid #64748b;
+  }
+}
+
 // Images and figures
 img {
   max-width: 100%;
@@ -387,5 +414,20 @@ html.dark {
   // Dark mode figure captions
   figcaption {
     color: #94a3b8;
+  }
+  
+  // Dark mode blockquotes
+  blockquote {
+    background-color: #1e293b;
+    border-left-color: #93c5fd;
+    color: #94a3b8;
+    
+    p {
+      color: inherit;
+    }
+    
+    blockquote {
+      border-left-color: #64748b;
+    }
   }
 }
