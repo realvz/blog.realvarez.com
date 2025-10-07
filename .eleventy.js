@@ -11,6 +11,7 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addPassthroughCopy("src/images");
     eleventyConfig.addPassthroughCopy("src/blog/**/*.{jpg,jpeg,png,gif,webp,svg}");
     eleventyConfig.addPassthroughCopy("src/robots.txt");
+    eleventyConfig.addPassthroughCopy("src/favicon.ico");
 
     eleventyConfig.addPlugin(pluginRss);
     eleventyConfig.addPlugin(pluginSitemap, {
