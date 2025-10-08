@@ -14,9 +14,9 @@ This document provides an over-simplied overview of the components that enable n
 
 ---
 
-In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI[^1] is one such example. Let's first review how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking.
+In [[Kubernetes]], the CNI (Container Network Interface) is responsible for equipping pods with network connectivity. Usually, the CNI creates a bridge interface on the worker node. This bridge acts as a Layer 2 virtual switch connecting all Pods on that node. Not all CNIs create a bridge. The AWS VPC CNI[^1] is one such example. Let's first review how CNIs like Calico work. These create an overlay network in which every pod gets a private IP address and they use a bridge on the worker node for container networking.
 
-When a new Pod starts, the CNI gives the Pod its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
+When a new Pod starts, the CNI gives the Pod its own isolated network namespace. Inside this namespace, the CNI creates a network interface and assigns it an IP address, so the Pod can communicate.
 
 > "A *network namespace* is a feature in [[Linux]] that allows you to create isolated network environments within a single Linux system. Each network namespace has its own network stack including network interfaces, routing tables, firewall rules and other network-related resources. This isolation allows you to run multiple independent network environments on the same physical or virtual machine, keeping them separate from each other." [^2]
 
@@ -25,30 +25,30 @@ When a new Pod starts, the CNI gives the Pod its own isolated network namespace
 Each Pod (residing in its own network namespace) then receives a `veth` pair. A *`veth`* pair consists of two interconnected virtual network interfaces. Whatever goes into one end comes out the other, and vice-versa. 
 
 Here's how the `veth` pair bridges the Pod with the worker node's network:
-1. Veth Pair Creation -- The CNI plugin creates a `veth` pair. Let's call the two ends `veth0-pod` and `veth0-bridge`.
-2. `veth0-pod` into Pod Namespace -- One end of the `veth` pair (`veth0-pod`) is moved into the Pod's newly created network namespace (`ip link set veth0-pod netns <pod-namespace>`). Inside the Pod, this interface is typically renamed to a standard name like `eth0` (`ip link set veth0-pod name eth0`). This `eth0` is what the applications running in the Pod see and use to send and receive network traffic.
-3. `veth0-bridge` to the Bridge -- The other end of the `veth` pair (`veth0-bridge`) remains in the host's network namespace and is then attached to the CNI-created Linux bridge (e.g., `cni0`, `br0`, or `docker0`).
+1. Veth Pair Creation -- The CNI plugin creates a `veth` pair. Let's call the two ends `veth0-pod` and `veth0-bridge`.
+2. `veth0-pod` into Pod Namespace -- One end of the `veth` pair (`veth0-pod`) is moved into the Pod's newly created network namespace (`ip link set veth0-pod netns <pod-namespace>`). Inside the Pod, this interface is typically renamed to a standard name like `eth0` (`ip link set veth0-pod name eth0`). This `eth0` is what the applications running in the Pod see and use to send and receive network traffic.
+3. `veth0-bridge` to the Bridge -- The other end of the `veth` pair (`veth0-bridge`) remains in the host's network namespace and is then attached to the CNI-created Linux bridge (e.g., `cni0`, `br0`, or `docker0`).
 
 ![Figure: How pods communicate with other Pods](Kubernetes%20Networking-1758132101915.webp)
 
 ## Inter-Pod Communication
 
-When Pod-A on a node wants to communicate with Pod-B on the *same* node, traffic from Pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of Pod B, which then enters Pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge interface is attached to the host network namespace, allowing traffic between Pods and the host or external networks to be forwarded.
+When Pod-A on a node wants to communicate with Pod-B on the *same* node, traffic from Pod A's `eth0` goes through its veth end (`veth0-pod`), out the other veth end (`veth0-bridge`), onto the bridge. The bridge then, acting as a Layer 2 switch, forwards the traffic directly to the `veth0-bridge` end of Pod B, which then enters Pod B's namespace via its `veth0-pod` (internal `eth0`). The bridge interface is attached to the host network namespace, allowing traffic between Pods and the host or external networks to be forwarded.
 
 ![Figure: Container network setup on a node](Kubernetes%20Networking-1758168916151.webp)
 
-To connect Pods with services, Pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
+To connect Pods with services, Pods on other nodes, and the external world, Kubernetes relies on the Linux kernel's built-in **netfilter** framework, which operates at Layer 3.
 
 ## AWS VPC CNI
 
 The AWS VPC CNI plugin takes a different approach from traditional CNIs. Instead of creating a bridge and using NAT for external communication, it leverages AWS VPC networking primitives directly. Each Pod gets a real VPC IP address from the subnet where the worker node resides.[^3]
 
 When a Pod starts, the VPC CNI performs these steps:
-1. Get IP Address – The Local IP Address Manager (L-IPAM) provides a secondary IP address from its warm pool
-2. Create veth Pair – One end goes to the Pod's network namespace, the other stays on the host
+1. Get IP Address – The Local IP Address Manager (L-IPAM) provides a secondary IP address from its warm pool
+2. Create veth Pair – One end goes to the Pod's network namespace, the other stays on the host
 3. Configure Pod Namespace:
-    - Assign the VPC IP address to the Pod's `eth0` interface with a `/32` subnet mask
-    - Add a default route via `169.254.1.1` (a link-local address)
+    - Assign the VPC IP address to the Pod's `eth0` interface with a `/32` subnet mask
+    - Add a default route via `169.254.1.1` (a link-local address)
     - Add a static ARP entry mapping the gateway to the host-side veth interface
 4. Configure Host Side:
     - Add a host route for the Pod's IP pointing to the host-side veth interface
@@ -129,7 +129,7 @@ For Pod-to-external traffic (outside the VPC), the VPC CNI uses SNAT to translat
 
 This ensures that external services see traffic as coming from the node's IP, allowing proper return traffic routing.
 
-[Iptables](https://en.wikipedia.org/wiki/Iptables) was the standard packet-filtering solution for a long time, but has been replaced by [nftables](https://lwn.net/Articles/867185/). Nftables was in turn supplanted in some areas by eBPF.[^4]
+[Iptables](https://en.wikipedia.org/wiki/Iptables) was the standard packet-filtering solution for a long time, but has been replaced by [nftables](https://lwn.net/Articles/867185/). Nftables was in turn supplanted in some areas by eBPF.[^4]
 
 ### Netfilter Tables and Chains
 
@@ -141,23 +141,23 @@ The structure is: Table → Chain → Rule.
 
 A *table* is a collection of chains. And a *chain* is an ordered list of rules. Each rule has a match condition (for example, if source IP is 1.1.1.1) and an action (such as ACCEPT, DROP, DNAT).
 
-> A chain is a checklist of *rules*. Each rule says "if the packet header looks like this, then here's what to do with the packet". If the rule doesn't match the packet, then the next rule in the chain is consulted. Finally, if there are no more rules to consult, then the kernel looks at the chain *policy* to decide what to do. In a security-conscious system, this policy usually tells the kernel to DROP the packet.[^5]
+> A chain is a checklist of *rules*. Each rule says "if the packet header looks like this, then here's what to do with the packet". If the rule doesn't match the packet, then the next rule in the chain is consulted. Finally, if there are no more rules to consult, then the kernel looks at the chain *policy* to decide what to do. In a security-conscious system, this policy usually tells the kernel to DROP the packet.[^5]
 
-When a packet hits a hook (let's say `PREROUTING`), the kernel checks tables that are registered for the hook. Each table has a set of built-in chains corresponding to the hooks.
+When a packet hits a hook (let's say `PREROUTING`), the kernel checks tables that are registered for the hook. Each table has a set of built-in chains corresponding to the hooks.
 
 Netfilter has six tables[^6]:
-- **`nat`** -- for address translation (DNAT and SNAT).
-- **`filter`** -- for deciding whether to allow or block traffic.
+- **`nat`** -- for address translation (DNAT and SNAT).
+- **`filter`** -- for deciding whether to allow or block traffic.
 - **`mangle`** -- for adjusting packet headers (rarely touched by Kubernetes).
-- **`raw`** -- for rules that should bypass connection tracking.
+- **`raw`** -- for rules that should bypass connection tracking.
 
-kube-proxy primarily works in the **nat** and **filter** tables.
+kube-proxy primarily works in the **nat** and **filter** tables.
 
 ## Conntrack
 
-*Conntrack (Connection Tracking)* is a `netfilter` component that tracks the state of all network connections (or "flows") passing through the Linux kernel. It's used for stateful operations like NAT and firewalls.
+*Conntrack (Connection Tracking)* is a `netfilter` component that tracks the state of all network connections (or "flows") passing through the Linux kernel. It's used for stateful operations like NAT and firewalls.
 
-For each flow (e.g., TCP session, UDP exchange), `conntrack` stores the following information:
+For each flow (e.g., TCP session, UDP exchange), `conntrack` stores the following information:
 - Source IP and Port
 - Destination IP and Port
 - Protocol (TCP, UDP, ICMP)
@@ -167,17 +167,17 @@ For each flow (e.g., TCP session, UDP exchange), `conntrack` stores the follow
 Kubernetes environments, especially with high connection churn, can generate a very high volume of network connections. This can result in the conntrack table getting full. 
 
 Common Issues and Adjustments:
-- **Conntrack Table Full:** If the table fills up, new connections are dropped, causing network failures. You'll see "nf_conntrack: table full, dropping packet" in logs.
-    - **Solution:** Increase `net.netfilter.nf_conntrack_max`.
-    - A common rule of thumb is `RAM_in_MB * 16`. For example, on a 32GB node: `sudo sysctl -w net.netfilter.nf_conntrack_max=524288`. This can be made persistent in `/etc/sysctl.conf`.    
+- **Conntrack Table Full:** If the table fills up, new connections are dropped, causing network failures. You'll see "nf_conntrack: table full, dropping packet" in logs.
+    - **Solution:** Increase `net.netfilter.nf_conntrack_max`.
+    - A common rule of thumb is `RAM_in_MB * 16`. For example, on a 32GB node: `sudo sysctl -w net.netfilter.nf_conntrack_max=524288`. This can be made persistent in `/etc/sysctl.conf`.    
 
 ### Monitoring Conntrack
 
-You can monitor `conntrack` usage to identify potential issues:
-- Check current connection count --  `cat /proc/sys/net/netfilter/nf_conntrack_count`
-- Max entries -- `cat /proc/sys/net/netfilter/nf_conntrack_max`
-- Detailed info -- `conntrack -L` (can be very verbose on busy systems)
-- Errors in dmesg -- `dmesg | grep nf_conntrack`
+You can monitor `conntrack` usage to identify potential issues:
+- Check current connection count --  `cat /proc/sys/net/netfilter/nf_conntrack_count`
+- Max entries -- `cat /proc/sys/net/netfilter/nf_conntrack_max`
+- Detailed info -- `conntrack -L` (can be very verbose on busy systems)
+- Errors in dmesg -- `dmesg | grep nf_conntrack`
 
 ## NFTables Mode for Kube-proxy
 
@@ -189,28 +189,28 @@ You can monitor `conntrack` usage to identify potential issues:
 
 The `bpfilter` project enhances Netfilter by converting `iptables` or `nftables` rules into high-performance eBPF programs that run entirely in kernel space. Traditional Netfilter can be slow for complex rules that require copying packets to user-space for tasks like deep inspection or observability. eBPF eliminates these copies by processing packets directly at Netfilter's hooks. [^7]
 
-The core motivation behind `bpfilter` is **performance**. While Netfilter is powerful, its traditional rule processing can become a bottleneck with very large and complex rule sets (common in large Kubernetes with a high Pod churn rate). By converting these rules into eBPF programs, `bpfilter` leverages eBPF's advantages. Note that, `bpfilter` is not a full replacement for Netfilter but a layer that translates rules into eBPF for faster processing.
+The core motivation behind `bpfilter` is **performance**. While Netfilter is powerful, its traditional rule processing can become a bottleneck with very large and complex rule sets (common in large Kubernetes with a high Pod churn rate). By converting these rules into eBPF programs, `bpfilter` leverages eBPF's advantages. Note that, `bpfilter` is not a full replacement for Netfilter but a layer that translates rules into eBPF for faster processing.
 
-Instead of hard-coded hooks, eBPF programs can be attached to various **event points** in the kernel, including network-related ones. When an event occurs (e.g., a packet arrives at an interface), the attached eBPF program is executed.
+Instead of hard-coded hooks, eBPF programs can be attached to various **event points** in the kernel, including network-related ones. When an event occurs (e.g., a packet arrives at an interface), the attached eBPF program is executed.
 
 eBPF is flexible and performant because:   
-- Programs are written in a restricted C-like language, compiled to bytecode, and then **JIT-compiled** to native machine code for extreme speed.
+- Programs are written in a restricted C-like language, compiled to bytecode, and then **JIT-compiled** to native machine code for extreme speed.
 - They run directly in the kernel space, avoiding costly context switches between user and kernel space.
-- A **verifier** ensures programs are safe, won't crash the kernel, and will terminate.
+- A **verifier** ensures programs are safe, won't crash the kernel, and will terminate.
 
-CNIs like Cilium use eBPF and don't need iptables. Cilium provides an ==eBPF-based `kube-proxy` replacement==. Instead of `iptables` rules, Cilium injects eBPF programs directly into the kernel's data path (e.g., using `XDP` or `TC` hooks). These eBPF programs handle the load balancing, network policy enforcement, and DNAT/SNAT for services much more efficiently using highly optimized eBPF maps (kernel data structures) for service endpoints. This eliminates the `iptables` overhead and significantly improves performance and scalability. You can enable this mode when installing Cilium.
+CNIs like Cilium use eBPF and don't need iptables. Cilium provides an ==eBPF-based `kube-proxy` replacement==. Instead of `iptables` rules, Cilium injects eBPF programs directly into the kernel's data path (e.g., using `XDP` or `TC` hooks). These eBPF programs handle the load balancing, network policy enforcement, and DNAT/SNAT for services much more efficiently using highly optimized eBPF maps (kernel data structures) for service endpoints. This eliminates the `iptables` overhead and significantly improves performance and scalability. You can enable this mode when installing Cilium.
 
 ### Network Policies
 
-Standard Kubernetes Network Policies are often implemented by CNI plugins by generating `iptables` (or eBPF) rules. These rules are added to the `FORWARD` chain (and sometimes `INPUT`/`OUTPUT` for host policies).
+Standard Kubernetes Network Policies are often implemented by CNI plugins by generating `iptables` (or eBPF) rules. These rules are added to the `FORWARD` chain (and sometimes `INPUT`/`OUTPUT` for host policies).
 
-Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on Pod `veth` interfaces) to inspect packets as they enter a Pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^8]
+Cilium (via the Cilium agent) takes Kubernetes `NetworkPolicy` and its extended CRDs like `CiliumNetworkPolicy`, compiles them into eBPF programs and maps, and attaches eBPF programs (for example at ingress TC hooks on Pod `veth` interfaces) to inspect packets as they enter a Pod's network namespace. For L3/L4 policies this is handled entirely in-kernel. For L7/application-layer policies (e.g. HTTP, gRPC, DNS), Cilium uses an Envoy proxy helper (running as part of the Cilium infrastructure) to enforce or assist in policy. This approach yields more granular control, faster policy enforcement, and avoids many of the overheads of traditional iptables rule-processing.[^8]
 
 ### Pod-to-Pod Networking in Cilium
 
-Even for basic Pod-to-Pod communication, Cilium leverages eBPF. Traditionally, packets between Pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
+Even for basic Pod-to-Pod communication, Cilium leverages eBPF. Traditionally, packets between Pods might traverse a Linux bridge and then rely on the kernel's routing table, potentially hitting `iptables` `FORWARD` chain rules.
 
-Cilium optimizes the data path for Pod-to-Pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^9]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular Pod traffic, leading to lower latency and higher throughput.
+Cilium optimizes the data path for Pod-to-Pod communication. While the underlying virtual interfaces (veth pairs, bridges) might still be present, the actual forwarding logic and encapsulation/decapsulation (for overlay networks like VXLAN or Geneve) are handled by highly optimized eBPF programs[^9]. This avoids the traditional Linux bridge processing path and `iptables` traversal for regular Pod traffic, leading to lower latency and higher throughput.
 
 ## Further Reading
 

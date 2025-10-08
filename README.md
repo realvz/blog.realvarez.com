@@ -1,6 +1,6 @@
 # Re's personal site
 
-👋 Hi there!
+👋 Hello!
 
 Hi, I am Re (pronounced like Ray). I work at AWS as a Principal Solutions Architect where I spend my days designing resilient systems that scale.
 
@@ -10,4 +10,8 @@ I look for patterns wherever I can find them—in distributed architectures, fam
 
 Living beneath the tall evergreens in Washington State has taught me that building a peaceful family is harder—and more rewarding—than building any system.
 
-I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV)and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
+I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV)and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
+
+PS: My older posts are on [Medium](https://medium.com/@realz)
+
+Opinions expressed are solely my own and do not express the views or opinions of my employer.
