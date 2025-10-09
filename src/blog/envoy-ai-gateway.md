@@ -12,7 +12,7 @@ Organizations deploying AI applications face a fundamental challenge: no single 
 
 *Envoy AI Gateway* (EAIG) is an open source project that solves this challenge by providing a single, scalable OpenAI-compatible endpoint that routes to any provider. It gives Platform teams cost controls and observability, while developers never touch provider-specific SDKs.
 
-Built on top of Envoy Gateway, EAIG specifically designed for handling LLM traffic. It acts as a centralized access point for managing and controlling access to various AI models within an organization.
+Built on top of Envoy Gateway, EAIG is specifically designed for handling LLM traffic. It acts as a centralized access point for managing and controlling access to various AI models within an organization.
 
 When using EAIG, your applications call a single OpenAI-compatible endpoint. It acts as proxy between the developer using the model and the model provider. It is an abstraction that enables you to switch from Bedrock Claude to Bedrock Llama to self-hosted models to OpenAI, all without touching application code. 
 
@@ -693,10 +693,53 @@ Here's a sample Prometheus adapter query that calculates and exposes average ser
       metricsQuery: 'sum(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>) / sum(gen_ai_server_request_duration_seconds_count{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
 ```
 
-It is best to scale Envoy on either CPU metrics or listener metrics. Check out [Envoy documentation](https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/stats) to find out the appropriate metric based on your usage type.
+It is best to scale Envoy on either CPU metrics or listener metrics. Check out [Envoy documentation](https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/stats) to find out the appropriate metric based on your usage type.
 
+## Performance Impact
 
----
+Any proxy adds latency, the time spent translating and routing requests between client and backend. For AI workloads where model inference already takes seconds, understanding this overhead helps you evaluate whether the gateway's benefits (unified API, rate limiting, observability) justify the additional latency.
+
+I ran an unscientific benchmark comparing direct Bedrock calls against requests through Envoy AI Gateway. Both used the same prompt: "Explain Nietzsche's philosophy in about 1024 characters." The test ran 10 iterations of each approach using the AWS CLI for Bedrock and curl for the gateway.
+
+Here was my test setup:
+- Model: Claude 3 Sonnet (`anthropic.claude-3-sonnet-20240229-v1:0`)
+- Region: `us-west-2`
+- Gateway deployment: Single Envoy proxy Pod on EKS. The Pod ran on a dedicated `c6a.large` EC2 instance. There were no CPU/memory limits.
+- Client was a Pod running in the same EKS cluster
+
+**Results**
+
+| Run     | Bedrock Direct (ms) | Through EAIG (ms) | Overhead (ms) |
+| ------- | ------------------- | ----------------- | ------------- |
+| 1       | 5,969               | 7,150             | 1,181         |
+| 2       | 6,327               | 7,498             | 1,171         |
+| 3       | 4,778               | 9,167             | 2,389         |
+| 4       | 5,487               | 7,000             | 1,513         |
+| 5       | 6,315               | 8,211             | 1,896         |
+| 6       | 5,306               | 7,498             | 2,192         |
+| 7       | 4,475               | 7,245             | 2,770         |
+| 8       | 5,790               | 7,704             | 1,914         |
+| 9       | 4,947               | 6,388             | 1,441         |
+| 10      | 5,772               | 6,570             | 798           |
+| **Avg** | **5,517**           | **7,443**         | **1,727**     |
+
+The gateway added an average of **1.7 seconds of overhead per request**, representing a 31% increase over direct Bedrock calls. Overhead varied between 798 milliseconds and 2.7 seconds across the 10 test runs, with most requests falling in the 1-3 second range. 
+
+![Envoy AI Gateway is slower than directly calling Bedrock](Envoy-AI-Gateway-1760024301932.webp)
+
+The 1.7-second overhead becomes negligible for long-running requests exceeding 10 seconds, where it represents less than 20% of total latency. Batch processing workloads and human-in-the-loop applications, where users already expect multi-second response times, absorb this delay without impact. However, the overhead matters for real-time applications requiring sub-second responses, high-throughput scenarios where milliseconds compound across thousands of requests, and cost-sensitive workloads where every additional second translates to more tokens consumed.
+
+So that's the tradeoff of using Envoy AI Gateway. You have to tolerate a couple seconds of additional latency per request. Maybe this will improve in the future versions. 
+
+Another test that I'd like to perform is understanding how gateway latency scales under concurrent load. In theory, Envoy's latency should get progressively worse as the number of clients increase. While autoscaling mitigates this by distributing load across multiple Envoy replicas, the gateway will never match the performance of direct Bedrock calls under high concurrency. There's inherent overhead that compounds with scale.
+
+Unfortunately, I wasn't able to perform this test. My account hit Bedrock's account-level rate limits before reaching meaningful gateway saturation. A proper load test would require either higher Bedrock quotas or synthetic backends that don't impose rate limits, allowing measurement of pure gateway throughput independent of upstream capacity.
+
+## Closing Remarks
+
+Envoy AI Gateway addresses a real challenge in enterprise AI deployments: managing multiple model providers through a unified interface. While its overhead may limit its use in real-time applications, the gateway provides valuable benefits for most AI workloads where response times already span multiple seconds.
+
+The token-based rate limiting, provider abstraction, and observability features make it particularly useful for platform teams managing AI infrastructure at scale. 
 
 ## Footnotes
 
