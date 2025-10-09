@@ -70,16 +70,16 @@ Here's the high level request flow [^2]:
 
 ### AIGatewayRoute
 
-The AIGatewayRoute routes to one or more AIServiceBackends. When you create an AIGatewayRoute, EAIG creates an HTTPRoute and HTTPRouteFilter (for URL rewriting).
+The AIGatewayRoute routes LLM traffic to one or more [supported AI providers](https://aigateway.envoyproxy.io/docs/capabilities/llm-integrations/supported-providers) (including self-hosted models). It tells the gateway which models are available and how to reach them.
 
-EAIG adds governance, reliability, and observability over AI traffic. It tracks input and output tokens, allowing administrators to define quotas and implement rate limiting. 
+When you create an AIGatewayRoute, EAIG generates an HTTPRoute and HTTPRouteFilter (for URL rewriting).
 
 Besides routing traffic, it is also used to
 - Specify the input API schema for client requests
 - Manage request/response transformations between different API schemas
 - Track LLM token usage
 
-Here's an example of an AIGatewayRoute that exposes two models (Claude and GPT-OSS from Bedrock) while tracking token usage:
+EAIG can tracks input and output tokens, allowing administrators to define quotas and implement rate limiting. Here's an example of an AIGatewayRoute that exposes two models (Claude and GPT-OSS from Bedrock) while tracking token usage:
 
 ```yaml
 apiVersion: aigateway.envoyproxy.io/v1alpha1
@@ -119,6 +119,8 @@ spec:
       type: CEL
       cel: "input_tokens == uint(3) ? 100000000 : 0"
 ```
+
+The `llmRequestCosts` section tells the gateway to extract token counts from each response and store them as metadata. Later, your BackendTrafficPolicy uses these values to enforce rate limits. For example: don't allow more than 10,000 input tokens per hour per user.
 
 #### External Processor
 
