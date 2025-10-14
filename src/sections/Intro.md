@@ -3,11 +3,12 @@ title: "Home"
 layout: "base.njk"
 permalink: "/"
 order: 1
+description: "Re Alvarez Parmar's site"
 ---
 
 # 👋 Hello!
 
-Hi, I am Re (pronounced like Ray). I work at AWS as a Principal Solutions Architect where I spend my days designing resilient systems that scale.
+Hi, I am Re (pronounced like Ray). I work at AWS as a Principal Solutions Architect where I spend my days helping customers design resilient systems that scale.
 
 In my free time, I'm fascinated by another kind of system: the psychological ones that shape how we love, hurt, and heal.
 
