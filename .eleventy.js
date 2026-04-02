@@ -6,6 +6,8 @@ const markdownIt = require("markdown-it");
 const markdownItFootnote = require("markdown-it-footnote");
 
 module.exports = function (eleventyConfig) {
+    eleventyConfig.addGlobalData("currentYear", new Date().getFullYear());
+
     eleventyConfig.addPassthroughCopy("src/styles.css");
     eleventyConfig.addPassthroughCopy("src/main.js");
     eleventyConfig.addPassthroughCopy("src/images");
