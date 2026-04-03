@@ -3,6 +3,7 @@ title: "Blog"
 layout: "base.njk"
 permalink: "/blog/"
 order: 3
+description: "Essays and technical writing by Re Alvarez Parmar on AI infrastructure, Kubernetes, distributed systems, and books."
 ---
 
 # Blog Posts

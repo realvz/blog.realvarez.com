@@ -7,6 +7,10 @@ const markdownItFootnote = require("markdown-it-footnote");
 
 module.exports = function (eleventyConfig) {
     eleventyConfig.addGlobalData("currentYear", new Date().getFullYear());
+    eleventyConfig.addGlobalData("site", {
+        url: "https://blog.realvarez.com",
+        name: "Re Alvarez Parmar's personal site"
+    });
 
     eleventyConfig.addPassthroughCopy("src/styles.css");
     eleventyConfig.addPassthroughCopy("src/main.js");
@@ -18,7 +22,7 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addPlugin(pluginRss);
     eleventyConfig.addPlugin(pluginSitemap, {
         sitemap: {
-            hostname: "https://realvarez.com",
+            hostname: "https://blog.realvarez.com",
         },
     });
 

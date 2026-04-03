@@ -3,20 +3,20 @@ title: "Home"
 layout: "base.njk"
 permalink: "/"
 order: 1
-description: "Re Alvarez Parmar's site"
+description: "Re Alvarez Parmar writes about AI infrastructure, Kubernetes, distributed systems, and the human side of technical work."
 ---
 
 # 👋 Hello!
 
-Hi, I am Re (pronounced like Ray). I work at AWS as a Principal Solutions Architect where I spend my days helping customers design resilient systems that scale.
+Hi, I am Re (pronounced like Ray). I work at Nebius as a Principal Cloud Solutions Architect. Most of my work is around GPU infrastructure, Kubernetes, and distributed systems. Before this, I spent ten years at AWS as a containers guy, helping customers modernize their applications and services.
 
-In my free time, I'm fascinated by another kind of system: the psychological ones that shape how we love, hurt, and heal.
+Outside work, I read and write about psychology, philosophy, and whatever else I am trying to understand.
 
-I look for patterns wherever I can find them—in distributed architectures, family dynamics, and the gap between words and meaning. I like to read for insight into human nature, dance (poorly) to reggaeton songs, and write about whatever catches my attention. I write to learn. My writing explores both the architecture of software and the architecture of transformation.
+I like distributed systems, family stories, and books that help me make better sense of people. I read Dostoevsky, Frank Herbert, Barbara Kingsolver, and a lot of philosophy. I write because it helps me think.
 
-Living beneath the tall evergreens in Washington State has taught me that building a peaceful family is harder—and more rewarding—than building any system.
+I live in the Pacific Northwest with my family. When I am not in front of my computer, I like going on hikes with them.
 
-I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV)and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
+I've written a book about building ML systems on Kubernetes. It is [available for purchase on Amazon](https://www.amazon.com/dp/B0FQ4BFHLV) and also [open sourced for free on GitHub](https://github.com/mlops-on-kubernetes/Book).
 
 PS: My older posts are on [Medium](https://medium.com/@realz)
 
