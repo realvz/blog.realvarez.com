@@ -9,7 +9,8 @@ module.exports = function (eleventyConfig) {
     eleventyConfig.addGlobalData("currentYear", new Date().getFullYear());
     eleventyConfig.addGlobalData("site", {
         url: "https://blog.realvarez.com",
-        name: "Re Alvarez Parmar's personal site"
+        name: "Re Alvarez Parmar's personal site",
+        analyticsMeasurementId: "G-B5XRB3YVTR"
     });
 
     eleventyConfig.addPassthroughCopy("src/styles.css");
